@@ -1,0 +1,17 @@
+[
+  {
+    "id": "nhom5",
+    "title": "Nhóm 5 Vật Lí 10",
+    "category": "Khoa học",
+    "description": "Bài thuyết trình Vật Lí 10 - Thực hành đo tốc độ của vật chuyển động. Bao gồm 22 slide, video giới thiệu, thí nghiệm tương tác 3D và nhạc nền.",
+    "priceBuy": 50000,
+    "priceRent": 20000,
+    "fileUrl": "https://raw.githubusercontent.com/phu2642011-sys/panslide/main/nhom5.html",
+    "preview": "linear-gradient(135deg,#0a0a2e,#1a1a4e)",
+    "downloads": 0,
+    "rating": 0,
+    "ratingCount": 0,
+    "hidden": false,
+    "badge": "new"
+  }
+]
