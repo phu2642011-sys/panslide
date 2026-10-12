@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Vật Lí 10 · Bài 6 · Nhóm 5 · Thực hành đo tốc độ</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root {
+  --bg:          #020617;
+  --bg-card:     rgba(15, 23, 42, 0.78);
+  --border:      rgba(0, 240, 255, 0.28);
+  --border-light:rgba(255, 255, 255, 0.22);
+  --cyan:        #00f0ff;
+  --cyan-glow:   rgba(0, 240, 255, 0.5);
+  --violet:      #8b5cf6;
+  --violet-glow: rgba(139, 92, 246, 0.5);
+  --amber:       #f59e0b;
+  --green:       #10b981;
+  --pink:        #ec4899;
+  --text-main:   #f8fafc;
+  --text-muted:  #94a3b8;
+  --radius:      22px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { 
+  width: 100%; height: 100%; overflow: hidden; 
+  background: var(--bg); color: var(--text-main); 
+  font-family: 'Plus Jakarta Sans', sans-serif; 
+  perspective: 1600px;
+}
+
+/* ── 3D CANVAS & BACKGROUND ── */
+#webgl-canvas { 
+  position: fixed; inset: 0; z-index: 0; 
+  pointer-events: none; 
+}
+
+.ambient-glow {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  background: 
+    radial-gradient(ellipse at 20% 20%, rgba(0, 240, 255, 0.14) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(139, 92, 246, 0.14) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(16, 185, 129, 0.06) 0%, transparent 60%);
+  animation: ambientPulse 12s ease-in-out infinite alternate;
+}
+@keyframes ambientPulse {
+  0% { opacity: 0.85; }
+  100% { opacity: 1; }
+}
+
+/* ── DECK & ADVANCED 3D TRANSITIONS ── */
+.deck { 
+  position: relative; width: 100vw; height: 100vh; z-index: 2; 
+  transform-style: preserve-3d;
+}
+
+.slide {
+  position: absolute; inset: 0;
+  padding: 70px clamp(36px, 7vw, 120px) 90px;
+  display: flex; flex-direction: column; justify-content: center;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transform: scale(0.7) rotateY(-50deg) rotateX(12deg) translateZ(-450px);
+  filter: blur(18px) brightness(0.25);
+  transition: opacity 0.75s ease, transform 0.9s cubic-bezier(0.22, 1.2, 0.36, 1), filter 0.75s ease, visibility 0s 0.9s;
+  transform-origin: center center;
+  overflow-y: auto;
+}
+
+.slide.active {
+  opacity: 1; visibility: visible; pointer-events: auto;
+  transform: scale(1) rotateY(0deg) rotateX(0deg) translateZ(0);
+  filter: blur(0px) brightness(1);
+  transition: opacity 0.75s ease, transform 0.9s cubic-bezier(0.16, 1, 0.3, 1), filter 0.75s ease, visibility 0s 0s;
+}
+
+.slide.exit-prev {
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transform: scale(0.7) rotateY(50deg) rotateX(-12deg) translateZ(-450px);
+  filter: blur(18px) brightness(0.25);
+  transition: opacity 0.65s ease, transform 0.75s ease, filter 0.65s ease, visibility 0s 0.75s;
+}
+
+/* ── TYPOGRAPHY ── */
+.badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 18px; border-radius: 99px;
+  background: rgba(0, 240, 255, 0.12); border: 1px solid rgba(0, 240, 255, 0.45);
+  color: var(--cyan); font-family: 'Space Grotesk', sans-serif;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  margin-bottom: 18px; backdrop-filter: blur(14px); width: fit-content;
+  box-shadow: 0 0 24px rgba(0, 240, 255, 0.28);
+}
+.badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 12px var(--cyan); animation: pulseDot 2s ease-in-out infinite; }
+@keyframes pulseDot { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.3);opacity:0.7} }
+
+h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(42px, 6vw, 86px); font-weight: 900;
+  line-height: 1.03; letter-spacing: -0.03em; margin-bottom: 18px;
+}
+.gradient-text {
+  background: linear-gradient(135deg, #ffffff 5%, var(--cyan) 55%, var(--violet) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.gradient-accent {
+  background: linear-gradient(135deg, var(--cyan) 0%, var(--violet) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(30px, 3.8vw, 50px); font-weight: 700;
+  line-height: 1.12; letter-spacing: -0.02em; margin-bottom: 16px;
+}
+
+p { font-size: clamp(15px, 1.25vw, 19px); line-height: 1.6; color: var(--text-muted); }
+
+/* ── ORBIT ICON ── */
+.orbit {
+  width: 74px; height: 74px; border-radius: 22px;
+  background: linear-gradient(135deg, rgba(0,240,255,0.28), rgba(139,92,246,0.28));
+  border: 1.5px solid var(--cyan); display: flex; align-items: center; justify-content: center;
+  font-size: 36px; margin-bottom: 22px; box-shadow: 0 0 42px var(--cyan-glow);
+  animation: float3d 4.5s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+@keyframes float3d { 
+  0%, 100% { transform: translateY(0) rotateY(0deg) rotateX(0deg); } 
+  50% { transform: translateY(-14px) rotateY(12deg) rotateX(6deg); } 
+}
+
+.title-sub { font-size: clamp(15px, 1.25vw, 19px); color: var(--text-muted); margin-top: 10px; line-height: 1.6; }
+
+/* ── MEMBER GRID ── */
+.member-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px; margin-top: 26px; }
+.member-card {
+  padding: 30px; border-radius: var(--radius);
+  background: var(--bg-card); border: 1px solid var(--border);
+  backdrop-filter: blur(22px); cursor: pointer;
+  transition: all .45s cubic-bezier(.16,1,.3,1); position: relative; overflow: hidden;
+  transform-style: preserve-3d;
+}
+.member-card::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(135deg, rgba(0,240,255,0.08), transparent 60%);
+  opacity: 0; transition: opacity .4s;
+}
+.member-card:hover::before { opacity: 1; }
+.member-card:hover {
+  border-color: var(--cyan); transform: translateY(-12px) rotateX(8deg) rotateY(-4deg) scale(1.02);
+  box-shadow: 0 24px 55px var(--cyan-glow);
+}
+.avatar {
+  width: 56px; height: 56px; border-radius: 16px;
+  background: linear-gradient(135deg, var(--cyan), var(--violet));
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 20px; color: #fff; margin-bottom: 18px;
+  box-shadow: 0 8px 22px var(--cyan-glow);
+}
+
+/* ── SECTION NUM ── */
+.s-section { justify-content: flex-end; }
+.section-num {
+  font-family: 'Space Grotesk', sans-serif; font-size: clamp(110px, 18vw, 240px);
+  font-weight: 900; line-height: 0.8;
+  background: linear-gradient(180deg, rgba(0,240,255,0.28) 0%, rgba(255,255,255,0) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  position: absolute; right: clamp(36px, 7vw, 120px); bottom: 40px; pointer-events: none;
+}
+
+/* ── LAYOUTS ── */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 42px; align-items: center; }
+.two-col-wide { grid-template-columns: 1.25fr 0.75fr; }
+
+.formula {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(28px, 3.2vw, 44px); font-weight: 700;
+  color: var(--cyan); background: rgba(0, 240, 255, 0.09);
+  border: 1px solid rgba(0, 240, 255, 0.42); border-radius: 18px;
+  padding: 16px 32px; display: inline-block; margin: 16px 0;
+  box-shadow: 0 0 38px var(--cyan-glow); transition: transform .35s ease, box-shadow .35s;
+}
+.formula:hover { transform: scale(1.06) translateZ(12px); box-shadow: 0 0 50px var(--cyan-glow); }
+
+.card-grid { display: grid; gap: 18px; margin-top: 18px; }
+.cols3 { grid-template-columns: repeat(3, 1fr); }
+.cols2 { grid-template-columns: repeat(2, 1fr); }
+
+.card {
+  padding: 24px; border-radius: var(--radius);
+  background: var(--bg-card); border: 1px solid var(--border); backdrop-filter: blur(18px);
+  transition: all .4s cubic-bezier(.16,1,.3,1); cursor: pointer;
+}
+.card:hover { border-color: var(--cyan); transform: translateY(-9px) scale(1.02); box-shadow: 0 18px 40px rgba(0, 240, 255, 0.22); }
+.card-num { font-family: 'Space Grotesk', sans-serif; font-size: 34px; font-weight: 800; color: var(--cyan); margin-bottom: 6px; }
+
+.steps-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 22px; }
+.step { padding: 20px; border-radius: var(--radius); background: var(--bg-card); border: 1px solid var(--border); backdrop-filter: blur(16px); transition: all .3s; }
+.step:hover { border-color: var(--violet); transform: translateY(-6px); }
+.step-n { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 800; color: var(--violet); margin-bottom: 8px; }
+
+.eq-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; }
+.eq { padding: 20px; text-align: center; border-radius: var(--radius); background: var(--bg-card); border: 1px solid var(--border); backdrop-filter: blur(16px); transition: all .3s; }
+.eq:hover { border-color: var(--cyan); transform: translateY(-6px) scale(1.03); }
+.eq-icon { font-size: 30px; margin-bottom: 8px; }
+
+/* ── PHOTO ── */
+.photo { 
+  position: relative; border-radius: var(--radius); overflow: hidden; 
+  border: 1.5px solid var(--border-light); 
+  box-shadow: 0 22px 55px rgba(0,0,0,0.75), 0 0 32px rgba(0, 240, 255, 0.18); 
+  background: #081220;
+}
+.photo img { 
+  display: block; width: 100%; height: 360px; object-fit: cover; 
+  transition: transform 0.7s cubic-bezier(.16,1,.3,1), filter 0.6s ease; 
+}
+.photo:hover img { transform: scale(1.09); filter: contrast(1.1) brightness(1.06); }
+.photo-caption { 
+  position: absolute; bottom: 0; inset-x: 0; padding: 20px; 
+  background: linear-gradient(to top, rgba(2,6,23,0.96) 25%, transparent); 
+  font-size: 13px; font-weight: 600; color: var(--text-main); 
+}
+
+/* ── DIAGRAM ── */
+.diagram-wrap { height: 230px; position: relative; margin-top: 22px; border-radius: var(--radius); background: rgba(255,255,255,0.025); border: 1px solid var(--border); overflow: hidden; backdrop-filter: blur(16px); }
+.d-rail { position: absolute; left: 8%; right: 8%; top: 115px; height: 4px; background: rgba(255,255,255,0.28); border-radius: 4px; box-shadow: 0 0 12px rgba(0,240,255,0.3); }
+.d-ball { position: absolute; top: 97px; left: 10%; width: 38px; height: 38px; border-radius: 50%; background: radial-gradient(circle at 32% 32%, #ffffff, var(--cyan)); box-shadow: 0 0 28px var(--cyan); animation: roll 3.8s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+@keyframes roll { 0%,100% { left: 10%; } 50% { left: 78%; } }
+.d-gate { position: absolute; top: 72px; width: 4px; height: 86px; background: var(--cyan); box-shadow: 0 0 22px var(--cyan); }
+.g-e { left: 35%; } .g-f { left: 70%; }
+
+.table-wrap { margin-top: 18px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); backdrop-filter: blur(16px); }
+table { width: 100%; border-collapse: collapse; background: var(--bg-card); }
+th { padding: 16px 22px; font-size: 13px; font-weight: 700; color: var(--cyan); text-align: center; font-family: 'Space Grotesk', sans-serif; background: rgba(0,240,255,0.09); }
+td { padding: 14px 22px; text-align: center; border-top: 1px solid var(--border); color: var(--text-main); font-size: 15px; }
+
+/* ── VIDEO SLIDES ── */
+.video-slide {
+  padding: 0 !important;
+  justify-content: center;
+  align-items: center;
+  background: #000;
+}
+.video-container {
+  position: relative;
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: #000;
+}
+.video-container video {
+  max-width: 100%; max-height: 100%;
+  width: auto; height: auto;
+  object-fit: contain;
+  border-radius: 0;
+}
+.video-overlay {
+  position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 12px; z-index: 10;
+  opacity: 0; transition: opacity .3s;
+}
+.video-container:hover .video-overlay { opacity: 1; }
+.vid-btn {
+  padding: 10px 20px; border-radius: 99px; border: 1px solid rgba(255,255,255,0.3);
+  background: rgba(0,0,0,0.65); color: #fff; font-size: 14px; font-weight: 600;
+  cursor: pointer; backdrop-filter: blur(10px); transition: all .2s;
+}
+.vid-btn:hover { background: var(--cyan); color: #000; border-color: var(--cyan); }
+.video-big-play {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  z-index: 5; cursor: pointer; background: rgba(0,0,0,0.35);
+  transition: opacity .3s;
+}
+.video-big-play.hidden { opacity: 0; pointer-events: none; }
+.video-big-play span {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: rgba(0,240,255,0.25); border: 3px solid var(--cyan);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px; color: #fff; box-shadow: 0 0 40px var(--cyan-glow);
+  transition: transform .2s;
+}
+.video-big-play:hover span { transform: scale(1.12); }
+
+/* ── ONLINE LAB ── */
+.lab-container {
+  display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 28px; margin-top: 18px; align-items: start;
+}
+.lab-canvas-wrap {
+  position: relative; border-radius: var(--radius); overflow: hidden;
+  border: 1.5px solid var(--border); background: rgba(0,0,0,0.4);
+  height: 340px; box-shadow: 0 0 40px rgba(0,240,255,0.15);
+}
+#labCanvas { width: 100%; height: 100%; display: block; }
+.lab-controls {
+  display: flex; flex-direction: column; gap: 14px;
+}
+.lab-panel {
+  padding: 18px 20px; border-radius: var(--radius);
+  background: var(--bg-card); border: 1px solid var(--border); backdrop-filter: blur(16px);
+}
+.lab-panel h4 { font-size: 14px; color: var(--cyan); margin-bottom: 10px; font-family: 'Space Grotesk', sans-serif; letter-spacing: 0.05em; }
+.lab-slider-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.lab-slider-row label { font-size: 13px; color: var(--text-muted); min-width: 90px; }
+.lab-slider-row input[type=range] {
+  flex: 1; height: 6px; border-radius: 3px; appearance: none;
+  background: linear-gradient(90deg, var(--cyan), var(--violet));
+  outline: none;
+}
+.lab-slider-row input[type=range]::-webkit-slider-thumb {
+  appearance: none; width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; box-shadow: 0 0 12px var(--cyan); cursor: pointer;
+}
+.lab-value { font-family: 'Space Grotesk'; font-weight: 700; color: var(--cyan); min-width: 60px; text-align: right; font-size: 14px; }
+.lab-btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.lab-btn {
+  padding: 12px 22px; border-radius: 12px; border: 1px solid var(--border);
+  background: rgba(0,240,255,0.12); color: var(--cyan); font-weight: 700; font-size: 14px;
+  cursor: pointer; transition: all .25s; font-family: 'Space Grotesk';
+}
+.lab-btn:hover { background: var(--cyan); color: #000; transform: translateY(-2px); box-shadow: 0 8px 20px var(--cyan-glow); }
+.lab-btn.primary { background: linear-gradient(135deg, var(--cyan), var(--violet)); color: #fff; border: none; }
+.lab-btn.primary:hover { filter: brightness(1.15); }
+.lab-result {
+  font-family: 'Space Grotesk'; font-size: 22px; font-weight: 800; color: var(--green);
+  text-align: center; padding: 12px; border-radius: 12px;
+  background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.35);
+}
+
+/* ── CONTROLS & NAVIGATION ── */
+#prog { position: fixed; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, var(--cyan), var(--violet), var(--pink)); z-index: 200; transition: width .4s ease; box-shadow: 0 0 14px var(--cyan); }
+.topbar { position: fixed; top: 20px; left: 28px; right: 28px; display: flex; justify-content: space-between; align-items: center; z-index: 100; pointer-events: auto; }
+.brand { font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); }
+.tools { display: flex; gap: 8px; align-items: center; }
+
+.music-btn {
+  display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 99px;
+  background: rgba(0, 240, 255, 0.14); border: 1px solid var(--cyan);
+  color: var(--cyan); font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 700;
+  cursor: pointer; backdrop-filter: blur(12px); transition: all .2s ease;
+  box-shadow: 0 0 16px rgba(0,240,255,0.2);
+}
+.music-btn:hover { background: rgba(0, 240, 255, 0.28); transform: translateY(-2px); }
+.music-btn.playing { border-color: var(--green); color: var(--green); }
+
+.vol-group {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 99px;
+  padding: 4px 8px; backdrop-filter: blur(12px);
+}
+.vol-btn {
+  width: 32px; height: 32px; border-radius: 50%; border: none;
+  background: transparent; color: var(--cyan); font-size: 16px; font-weight: 700;
+  cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center;
+}
+.vol-btn:hover { background: rgba(0,240,255,0.2); transform: scale(1.1); }
+.vol-label { font-family: 'Space Grotesk'; font-size: 11px; color: var(--text-muted); min-width: 36px; text-align: center; }
+
+.tool { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-card); color: #fff; cursor: pointer; font-size: 15px; backdrop-filter: blur(10px); transition: all .2s; display: flex; align-items: center; justify-content: center; }
+.tool:hover { border-color: var(--cyan); color: var(--cyan); transform: scale(1.1); }
+
+.controls {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 100;
+  display: flex; align-items: center; gap: 10px; padding: 7px 14px; border-radius: 99px;
+  background: var(--bg-card); border: 1px solid var(--border); backdrop-filter: blur(22px);
+  box-shadow: 0 12px 36px rgba(0,0,0,0.55); pointer-events: auto;
+}
+.ctrl { width: 38px; height: 38px; border-radius: 50%; border: 0; background: rgba(255,255,255,0.08); color: #fff; cursor: pointer; font-size: 17px; transition: all .2s; display: flex; align-items: center; justify-content: center; }
+.ctrl:hover { background: var(--cyan); color: #000; transform: scale(1.12); }
+.ctr-count { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; color: var(--text-muted); min-width: 56px; text-align: center; }
+
+@media (max-width: 900px) {
+  .two-col, .two-col-wide, .lab-container { grid-template-columns: 1fr; }
+  .cols3, .cols2, .steps-row, .eq-grid { grid-template-columns: 1fr; }
+  .slide { padding: 56px 20px 100px; }
+  h1 { font-size: 36px; } h2 { font-size: 28px; }
+  .lab-canvas-wrap { height: 260px; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="webgl-canvas"></canvas>
+<div class="ambient-glow"></div>
+<div id="prog"></div>
+
+<audio id="bgMusic" loop preload="auto">
+  <source src="3.mp3" type="audio/mpeg">
+</audio>
+
+<div class="topbar">
+  <div class="brand">Vật Lí 10 · Bài 6 · Nhóm 5</div>
+  <div class="tools">
+    <button class="music-btn" id="musicBtn" onclick="toggleAudio(event)">▶ Nhạc nền</button>
+    <div class="vol-group">
+      <button class="vol-btn" onclick="changeVol(-0.1, event)" title="Giảm âm lượng">−</button>
+      <span class="vol-label" id="volLabel">80%</span>
+      <button class="vol-btn" onclick="changeVol(0.1, event)" title="Tăng âm lượng">+</button>
+    </div>
+    <button class="tool" id="sndBtn" onclick="toggleSound(event)" title="Âm thanh hiệu ứng (M)">🔊</button>
+    <button class="tool" onclick="toggleFS(event)" title="Toàn màn hình (F)">⛶</button>
+  </div>
+</div>
+
+<div class="deck">
+
+<!-- ▸ SLIDE 0 — Title -->
+<section class="slide active">
+  <div class="orbit">⚛</div>
+  <div class="badge"><div class="badge-dot"></div>Vật Lí 10 · Bài 6</div>
+  <h1>Kính chào<br><span class="gradient-text">quý thầy cô</span><br>và các bạn</h1>
+  <p class="title-sub">
+    Bài thuyết trình: <strong>"Thực hành đo tốc độ của vật chuyển động"</strong><br>
+    Nhóm 5 — Nguyễn Đức Phú · Nguyễn Văn Lâm
+  </p>
+</section>
+
+<!-- ▸ SLIDE 1 — INTRO VIDEO (1.mp4) -->
+<section class="slide video-slide" data-video="intro">
+  <div class="video-container">
+    <video id="introVideo" playsinline preload="auto" controls>
+      <source src="1.mp4" type="video/mp4">
+      Trình duyệt không hỗ trợ video.
+    </video>
+    <div class="video-big-play" id="introBigPlay" onclick="playVideo('introVideo', event)">
+      <span>▶</span>
+    </div>
+    <div class="video-overlay">
+      <button class="vid-btn" onclick="playVideo('introVideo', event)">▶ Phát / Tạm dừng</button>
+      <button class="vid-btn" onclick="restartVideo('introVideo', event)">↺ Phát lại</button>
+    </div>
+  </div>
+</section>
+
+<!-- ▸ SLIDE 2 — Giới thiệu nhóm -->
+<section class="slide">
+  <div class="badge"><div class="badge-dot"></div>Giới thiệu nhóm</div>
+  <h2>Thành viên <span class="gradient-accent">Nhóm 5</span></h2>
+  <p>Cùng thực hiện bài thực hành đo tốc độ của vật chuyển động.</p>
+  <div class="member-grid">
+    <div class="member-card">
+      <div class="avatar">NP</div>
+      <h3 style="font-size:20px; font-weight:700; margin-bottom:4px;">Nguyễn Đức Phú</h3>
+      <p style="font-size:14px; color:var(--cyan);">Thành viên nhóm 5</p>
+    </div>
+    <div class="member-card">
+      <div class="avatar" style="background: linear-gradient(135deg, var(--violet), #ec4899);">NL</div>
+      <h3 style="font-size:20px; font-weight:700; margin-bottom:4px;">Nguyễn Văn Lâm</h3>
+      <p style="font-size:14px; color:var(--violet);">Thành viên nhóm 5</p>
+    </div>
+  </div>
+</section>
+
+<!-- ▸ SLIDE 3 — Section 01 -->
+<section class="slide s-section">
+  <div class="section-num">01</div>
+  <div class="badge"><div class="badge-dot"></div>Phần I</div>
+  <h2>Cơ sở <span class="gradient-accent">lí thuyết</span></h2>
+  <p style="max-width:520px;">Tốc độ, cách tính, và các đại lượng cần đo trong thí nghiệm.</p>
+</section>
+
+<!-- ▸ SLIDE 4 — Công thức tốc độ -->
+<section class="slide">
+  <div class="badge"><div class="badge-dot"></div>Cơ sở lí thuyết</div>
+  <h2>Tốc độ của vật</h2>
+  <p>Tốc độ mô tả mức độ nhanh hay chậm của chuyển động theo thời gian.</p>
+  <div class="formula">v = s / t</div>
+  <div class="card-grid cols3">
+    <div class="card">
+      <div class="card-num">v</div>
+      <h3 style="font-size:17px; margin-bottom:4px;">Tốc độ</h3>
+      <p style="font-size:13px;">Đơn vị: m/s</p>
+    </div>
+    <div class="card">
+      <div class="card-num" style="color:var(--violet)">s</div>
+      <h3 style="font-size:17px; margin-bottom:4px;">Quãng đường</h3>
+      <p style="font-size:13px;">Đơn vị: m (mét)</p>
+    </div>
+    <div class="card">
+      <div class="card-num" style="color:var(--amber)">t</div>
+      <h3 style="font-size:17px; margin-bottom:4px;">Thời gian</h3>
+      <p style="font-size:13px;">Đơn vị: s (giây)</p>
+    </div>
+  </div>
+</section>
+
+<!-- ▸ SLIDE 5 — Đo tốc độ trong phòng TN -->
+<section class="slide">
+  <div class="two-col two-col-wide">
+    <div>
+      <div class="badge"><div class="badge-dot"></div>Cơ sở lí thuyết</div>
+      <h2>Đo tốc độ <span class="gradient-text">trong phòng thí nghiệm</span></h2>
+      <p>Cần xác định hai đại lượng độc lập, sau đó tính bằng công thức:</p>
+      <div class="steps-row" style="grid-template-columns:repeat(2,1fr); margin-top:18px;">
+        <div class="step"><div class="step-n">01</div><p>Đo quãng đường <strong>s</strong> giữa hai điểm</p></div>
+        <div class="step"><div class="step-n">02</div><p>Đo thời gian <strong>t</strong> vật đi qua</p></div>
+        <div class="step"><div class="step-n">03</div><p>Tính tốc độ <strong>v = s/t</strong></p></div>
+        <div class="step"><div class="step-n">04</div><p>Đánh giá sai số phép đo</p></div>
+      </div>
+    </div>
+    <div class="photo">
+      <img src="https://hoc24.vn/source/KHTN%207-%20Quy%C3%AAn/C%C3%A1nh%20di%E1%BB%81u/Ch%E1%BB%A7%20%C4%91%E1%BB%81%204/Screen%20Shot%202022-03-25%20at%2010-10-57.png" alt="Cổng quang điện">
+      <div class="photo-caption">Minh họa cổng quang điện</div>
+    </div>
+  </div>
+</section>
+
+<!-- ▸ SLIDE 6 — Tốc độ trung bình -->
+<section class="slide">
+  <div class="badge"><div class="badge-dot"></div>Cơ sở lí thuyết</div>
+  <h2>Tốc độ <span class="gradient-accent">trung bình</span></h2>
+  <p>Khi viên bi đi từ cổng quang <strong>E</strong> đến cổng <strong>F</strong>, tốc độ trung bình trên đoạn EF là:</p>
+  <div class="formula">v<sub>tb</sub> = s / Δt</div>
+  <div class="card-grid cols3">
+    <div class="card"><h3 style="color:var(--cyan); margin-bottom:6px;">s (m)</h3><p style="font-size:13px;">Khoảng cách thực đo giữa hai cổng quang điện E và F.</p></div>
+    <div class="card"><h3 style="color:var(--violet); margin-bottom:6px;">Δt (s)</h3><p style="font-size:13px;">Thời gian viên bi đi hết quãng đường từ E đến F.</p></div>
+    <div class="card"><h3 style="color:var(--green); margin-bottom:6px;">v<sub>tb</sub> (m/s)</h3><p style="font-size:13px;">Tốc độ trung bình của viên bi trên đoạn EF đó.</p></div>
+  </div>
+</section>
+
+<!-- ▸ SLIDE 7 — Tốc độ tức thời -->
+<section class="slide">
+  <div class="badge"><div class="badge-dot"></div>Cơ sở lí thuyết</div>
+  <h2>Tốc độ <span class="gradient-accent">tức thời</span></h2>
+  <p>Khi phần chắn sáng có đường kính <span style="color:var(--cyan)">d</span> nhỏ, thời gian chắn tia <span style="color:var(--cyan)">Δt</span> rất ngắn, ta xấp xỉ:</p>
+  <div class="formula">v ≈ d / Δt</div>
+  <div class="card-grid cols2">
+    <div class="card"><h3 style="color:var(--cyan); margin-bottom:6px;">d — Đường kính phần chắn sáng</h3><p style="font-size:13px;">Đo bằng thước cặp, đơn vị mét. Càng nhỏ, phép xấp xỉ càng chính xác.</p></div>
+    <div class="card"><h3 style="color:var(--violet); margin-bottom:6px;">Δt — Thời gian chắn tia sáng</h3><p style="font-size:13px;">Đồng hồ ghi nhận tại cổng tại điểm cần đo tốc độ tức thời.</p></div>
+  </div>
+</section>
+
+<!-- ▸ SLIDE 8 — Section 02 -->
+<section class="slide s-section">
+  <div class="section-num">02</div>
+  <div class="badge"><div class="badge-dot"></div>Phần II</div>
+  <h2>Dụng cụ <span class="gradient-accent">thí nghiệm</span></h2>
+  <p style="max-width:520px;">Bộ thiết bị đo thời gian và khoảng cách với độ chính xác cao.</p>
+</section>
+
+<!-- ▸ SLIDE 9 — Đồng hồ số -->
+<section class="slide">
+  <div class="two-col">
+    <div class="photo">
+      <img src="https://dmklab.vn/wp-content/uploads/2023/10/dong-ho-do-thoi-gian-hien-so.png" alt="Đồng hồ đo thời gian hiện số">
+      <div class="photo-caption">Đồng hồ đo thời gian hiện số</div>
+    </div>
+    <div>
+      <div class="badge"><div class="badge-dot"></div>Dụng cụ thí nghiệm</div>
+      <h2>Đồng hồ đo <span class="gradient-text">thời gian hiện số</span></h2>
+      <p>Kết hợp với cổng quang điện, đồng hồ ghi nhận thời gian chuyển động của viên bi với độ phân giải <strong>0,001 s</strong> — đủ chính xác để tính tốc độ tức thời.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ▸ SLIDE 10 — Bộ dụng cụ -->
+<section class="slide">
+  <div class="badge"><div class="badge-dot"></div>Dụng cụ thí nghiệm</div>
+  <h2>Bộ dụng cụ <span class="gradient-accent">đầy đủ</span></h2>
+  <div class="eq-grid">
+    <div class="eq"><div class="eq-icon">⏱️</div><h3 style="font-size:15px;">Đồng hồ số</h3><p style="font-size:12px; margin-top:4px;">Đo thời gian chính xác</p></div>
+    <div class="eq"><div class="eq-icon">🔦</div><h3 style="font-size:15px;">Cổng quang điện</h3><p style="font-size:12px; margin-top:4px;">Phát hiện vật đi qua</p></div>
+    <div class="eq"><div class="eq-icon">⚙️</div><h3 style="font-size:15px;">Máng dẫn hướng</h3><p style="font-size:12px; margin-top:4px;">Định hướng chuyển động</p></div>
+    <div class="eq"><div class="eq-icon">⚪</div><h3 style="font-size:15px;">Viên bi thép</h3><p style="font-size:12px; margin-top:4px;">Vật chuyển động</p></div>
+    <div class="eq"><div class="eq-icon">🧲</div><h3 style="font-size:15px;">Nam châm điện</h3><p style="font-size:12px; margin-top:4px;">Giữ và thả bi đúng lúc</p></div>
+    <div class="eq"><div class="eq-icon">📏</div><h3 style="font-size:15px;">Thước cặp</h3><p style="font-size:12px; margin-top:4px;">Đo đường kính bi (d)</p></div>
+  </div>
+</section>
+
+<!-- ▸ SLIDE 11 — Cổng quang -->
+<section class="slide">
+  <div class="two-col two-col-wide">
+    <div>
+      <div class="badge"><div class="badge-dot"></div>Dụng cụ thí nghiệm</div>
+      <h2>Hệ thống <span class="gradient-accent">cổng quang điện</span></h2>
+      <p>Khi viên bi đi qua, phần chắn sáng làm gián đoạn tia hồng ngoại. Đồng hồ ghi nhận đúng khoảnh khắc đó — không phụ thuộc phản xạ tay người.</p>
+    </div>
+    <div class="photo">
+      <img src="https://www.arborsci.com/cdn/shop/files/Timer-Photogates-2.jpg?v=1772724270&width=800" alt="Hệ thống timer và photogate">
+      <div class="photo-caption">Timer và cổng quang — bộ đôi chủ lực</div>
+    </div>
+  </div>
+</section>
+
+<!-- ▸ SLIDE 12 — Sơ đồ thí nghiệm -->
+<section class="slide">
+  <div class="badge"><div class="badge-dot"></div>Nguyên lí thí nghiệm</div>
+  <h2>Sơ đồ bố trí <span class="gradient-accent">thí nghiệm</span></h2>
+  <div class="diagram-wrap">
+    <div class="d-rail"></div>
+    <div class="d-ball"></div>
+    <div class="d-gate g-e"></div>
+    <div class="d-gate g-f"></div>
+  </div>
+  <p style="margin-top:18px;">Viên bi thả từ nam châm điện → qua <span style="color:var(--cyan)">E</span> → đồng hồ bắt đầu → qua <span style="color:var(--cyan)">F</span> → đồng hồ dừng → ghi Δt.</p>
+</section>
+
+<!-- ▸ SLIDE 13 — ONLINE LAB -->
+<section class="slide">
+  <div class="badge"><div class="badge-dot"></div>Thực hành online</div>
+  <h2>Thí nghiệm <span class="gradient-accent">tương tác 3D</span></h2>
+  <p style="margin-bottom:8px;">Điều chỉnh khoảng cách, tốc độ và quan sát viên bi lăn qua hai cổng quang điện. Nhấn "Thả bi" để bắt đầu.</p>
+  <div class="lab-container">
+    <div class="lab-canvas-wrap">
+      <canvas id="labCanvas"></canvas>
+    </div>
+    <div class="lab-controls">
+      <div class="lab-panel">
+        <h4>THAM SỐ THÍ NGHIỆM</h4>
+        <div class="lab-slider-row">
+          <label>Khoảng cách s</label>
+          <input type="range" id="sSlider" min="0.3" max="1.0" step="0.01" value="0.50">
+          <span class="lab-value" id="sVal">0.50 m</span>
+        </div>
+        <div class="lab-slider-row">
+          <label>Tốc độ đặt</label>
+          <input type="range" id="vSlider" min="0.2" max="1.5" step="0.01" value="0.65">
+          <span class="lab-value" id="vVal">0.65 m/s</span>
+        </div>
+        <div class="lab-slider-row">
+          <label>Đường kính d</label>
+          <input type="range" id="dSlider" min="0.01" max="0.04" step="0.001" value="0.020">
+          <span class="lab-value" id="dVal">0.020 m</span>
+        </div>
+      </div>
+      <div class="lab-btn-row">
+        <button class="lab-btn primary" onclick="startLab()">▶ Thả bi</button>
+        <button class="lab-btn" onclick="resetLab()">↺ Reset</button>
+      </div>
+      <div class="lab-panel">
+        <h4>KẾT QUẢ ĐO</h4>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+          <div style="text-align:center;"><span style="font-size:12px;color:var(--text-muted);">Δt (E→F)</span><div id="dtResult" style="font-family:'Space Grotesk';font-size:20px;font-weight:700;color:var(--cyan);">—</div></div>
+          <div style="text-align:center;"><span style="font-size:12px;color:var(--text-muted);">v<sub>tb</sub></span><div id="vtbResult" style="font-family:'Space Grotesk';font-size:20px;font-weight:700;color:var(--green);">—</div></div>
+        </div>
+        <div class="lab-result" id="labFinal">Nhấn "Thả bi" để bắt đầu</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ▸ SLIDE 14 — Tiến hành -->
+<section class="slide">
+  <div class="badge"><div class="badge-dot"></div>Tiến hành thí nghiệm</div>
+  <h2>Các bước <span class="gradient-accent">thực hành</span></h2>
+  <div class="steps-row">
+    <div class="step"><div class="step-n">01</div><h3 style="font-size:15px; margin-bottom:5px;">Lắp đặt</h3><p style="font-size:12px;">Bố trí máng, hai cổng quang và đồng hồ. Kiểm tra kết nối.</p></div>
+    <div class="step"><div class="step-n">02</div><h3 style="font-size:15px; margin-bottom:5px;">Đo khoảng cách</h3><p style="font-size:12px;">Dùng thước đo khoảng cách <strong>s</strong> giữa hai cổng E và F.</p></div>
+    <div class="step"><div class="step-n">03</div><h3 style="font-size:15px; margin-bottom:5px;">Thả bi và ghi</h3><p style="font-size:12px;">Ngắt nam châm, bi lăn qua cả hai cổng. Đọc Δt trên đồng hồ.</p></div>
+    <div class="step"><div class="step-n">04</div><h3 style="font-size:15px; margin-bottom:5px;">Lặp lại</h3><p style="font-size:12px;">Thực hiện ít nhất 3 lần, ghi đầy đủ số liệu mỗi lần.</p></div>
+  </div>
+</section>
+
+<!-- ▸ SLIDE 15 — Section 03 -->
+<section class="slide s-section">
+  <div class="section-num">03</div>
+  <div class="badge"><div class="badge-dot"></div>Phần III</div>
+  <h2>Xử lí <span class="gradient-accent">kết quả đo</span></h2>
+  <p style="max-width:520px;">Từ số liệu thực nghiệm, tính tốc độ và đánh giá sai số.</p>
+</section>
+
+<!-- ▸ SLIDE 16 — Bảng số liệu -->
+<section class="slide">
+  <div class="badge"><div class="badge-dot"></div>Xử lí kết quả</div>
+  <h2>Bảng số liệu <span class="gradient-accent">thực nghiệm</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Lần đo</th>
+          <th>s (m)</th>
+          <th>Δt (s)</th>
+          <th>v = s/Δt (m/s)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>0,500</td><td>0,777</td><td style="color:var(--green);">0,644</td></tr>
+        <tr><td>2</td><td>0,500</td><td>0,780</td><td style="color:var(--green);">0,641</td></tr>
+        <tr><td>3</td><td>0,500</td><td>0,776</td><td style="color:var(--green);">0,644</td></tr>
+        <tr style="background:rgba(0,240,255,0.03);"><td><strong>Trung bình</strong></td><td>0,500</td><td>0,778</td><td style="color:var(--cyan); font-weight:700;">0,643</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ▸ SLIDE 17 — v trung bình -->
+<section class="slide">
+  <div class="badge"><div class="badge-dot"></div>Tính toán</div>
+  <h2>Tốc độ <span class="gradient-accent">trung bình</span></h2>
+  <p>Dùng giá trị <strong>s = 0,500 m</strong> và thời gian trung bình <strong>t̄ = 0,778 s</strong>:</p>
+  <div class="formula">v<sub>tb</sub> = 0,500 / 0,778</div>
+  <div class="card" style="border-color:var(--green); display:inline-block; padding:18px 36px; margin-top:8px;">
+    <p style="font-size:13px; margin-bottom:4px;">Kết quả</p>
+    <div style="font-family:'Space Grotesk',sans-serif; font-size:34px; font-weight:800; color:var(--green);">v<sub>tb</sub> ≈ 0,643 m/s</div>
+  </div>
+</section>
+
+<!-- ▸ SLIDE 18 — v tức thời -->
+<section class="slide">
+  <div class="badge"><div class="badge-dot"></div>Tính toán</div>
+  <h2>Tốc độ <span class="gradient-accent">tức thời</span></h2>
+  <p>Đường kính phần chắn sáng <strong>d = 0,020 m</strong>, thời gian chắn tia <strong>Δt = 0,032 s</strong>:</p>
+  <div class="formula">v ≈ d / Δt = 0,020 / 0,032</div>
+  <div class="card" style="border-color:var(--green); display:inline-block; padding:18px 36px; margin-top:8px;">
+    <p style="font-size:13px; margin-bottom:4px;">Kết quả</p>
+    <div style="font-family:'Space Grotesk',sans-serif; font-size:34px; font-weight:800; color:var(--green);">v ≈ 0,625 m/s</div>
+  </div>
+</section>
+
+<!-- ▸ SLIDE 19 — Sai số -->
+<section class="slide">
+  <div class="badge"><div class="badge-dot"></div>Đánh giá sai số</div>
+  <h2>Phân tích <span class="gradient-text">sai số</span></h2>
+  <div class="formula">Δv/v ≈ Δs/s + Δt/t</div>
+  <div class="card-grid cols3">
+    <div class="card"><h3 style="color:var(--cyan); margin-bottom:6px;">Sai số dụng cụ</h3><p style="font-size:13px;">Do giới hạn độ phân giải của thước đo và đồng hồ. Cố định, không giảm được bằng nhiều lần đo.</p></div>
+    <div class="card"><h3 style="color:var(--violet); margin-bottom:6px;">Sai số ngẫu nhiên</h3><p style="font-size:13px;">Do biến động không lặp lại giữa các lần đo. Giảm bằng cách lấy trung bình nhiều lần.</p></div>
+    <div class="card"><h3 style="color:var(--green); margin-bottom:6px;">Cách giảm sai số</h3><p style="font-size:13px;">Đo tối thiểu 3 lần. Lấy giá trị trung bình. Kiểm tra điều kiện thí nghiệm trước mỗi lần.</p></div>
+  </div>
+</section>
+
+<!-- ▸ SLIDE 20 — Kết luận -->
+<section class="slide">
+  <div class="two-col">
+    <div>
+      <div class="badge"><div class="badge-dot"></div>Kết luận</div>
+      <h2>Chúng ta <span class="gradient-accent">đã làm được gì?</span></h2>
+      <div style="display:flex; flex-direction:column; gap:14px; margin-top:18px;">
+        <div style="display:flex; align-items:center; gap:12px;"><span style="color:var(--green); font-weight:800;">✓</span> Đo quãng đường s và thời gian Δt chính xác.</div>
+        <div style="display:flex; align-items:center; gap:12px;"><span style="color:var(--green); font-weight:800;">✓</span> Tính được tốc độ trung bình trên đoạn EF.</div>
+        <div style="display:flex; align-items:center; gap:12px;"><span style="color:var(--green); font-weight:800;">✓</span> Xác định tốc độ tức thời tại cổng quang điện.</div>
+        <div style="display:flex; align-items:center; gap:12px;"><span style="color:var(--green); font-weight:800;">✓</span> Đánh giá và phân tích sai số của phép đo.</div>
+      </div>
+    </div>
+    <div style="text-align:center;"><div class="formula">v = s / t</div></div>
+  </div>
+</section>
+
+<!-- ▸ SLIDE 21 — ENDING VIDEO (2.mp4) -->
+<section class="slide video-slide" data-video="ending">
+  <div class="video-container">
+    <video id="endingVideo" playsinline preload="auto" controls>
+      <source src="2.mp4" type="video/mp4">
+      Trình duyệt không hỗ trợ video.
+    </video>
+    <div class="video-big-play" id="endingBigPlay" onclick="playVideo('endingVideo', event)">
+      <span>▶</span>
+    </div>
+    <div class="video-overlay">
+      <button class="vid-btn" onclick="playVideo('endingVideo', event)">▶ Phát / Tạm dừng</button>
+      <button class="vid-btn" onclick="restartVideo('endingVideo', event)">↺ Phát lại</button>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<!-- CONTROLS -->
+<div class="controls">
+  <button class="ctrl" onclick="go(-1, event)">‹</button>
+  <div class="ctr-count" id="count">1 / 22</div>
+  <button class="ctrl" onclick="go(1, event)">›</button>
+</div>
+
+<script>
+/* ── THREE.JS BACKGROUND ── */
+const canvas = document.getElementById('webgl-canvas');
+let scene, camera, renderer, icoMesh, starField, gridHelper, torusMesh;
+let mouseX = 0, mouseY = 0, targetX = 0, targetY = 0;
+
+function init3D() {
+  if (typeof THREE === 'undefined') return;
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+  renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  // Icosahedron
+  const icoGeo = new THREE.IcosahedronGeometry(12, 2);
+  const icoMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, wireframe: true, transparent: true, opacity: 0.22 });
+  icoMesh = new THREE.Mesh(icoGeo, icoMat);
+  scene.add(icoMesh);
+
+  // Torus
+  const torusGeo = new THREE.TorusGeometry(18, 0.35, 16, 100);
+  const torusMat = new THREE.MeshBasicMaterial({ color: 0x8b5cf6, wireframe: true, transparent: true, opacity: 0.15 });
+  torusMesh = new THREE.Mesh(torusGeo, torusMat);
+  torusMesh.rotation.x = Math.PI / 2.5;
+  scene.add(torusMesh);
+
+  // Particles
+  const count = 1200;
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count * 3; i++) positions[i] = (Math.random() - 0.5) * 120;
+  const particlesGeo = new THREE.BufferGeometry();
+  particlesGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const particlesMat = new THREE.PointsMaterial({ size: 0.26, color: 0x8b5cf6, transparent: true, opacity: 0.7 });
+  starField = new THREE.Points(particlesGeo, particlesMat);
+  scene.add(starField);
+
+  // Grid
+  gridHelper = new THREE.GridHelper(160, 50, 0x00f0ff, 0x1e293b);
+  gridHelper.position.y = -24;
+  scene.add(gridHelper);
+
+  camera.position.z = 28;
+
+  window.addEventListener('mousemove', (e) => {
+    mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+    mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+  });
+  animate3D();
+}
+
+function animate3D() {
+  requestAnimationFrame(animate3D);
+  targetX += (mouseX - targetX) * 0.05;
+  targetY += (mouseY - targetY) * 0.05;
+
+  if (icoMesh) {
+    icoMesh.rotation.x = targetY * 1.4 + Date.now() * 0.0005;
+    icoMesh.rotation.y = targetX * 1.4 + Date.now() * 0.0008;
+  }
+  if (torusMesh) {
+    torusMesh.rotation.z = Date.now() * 0.0003;
+    torusMesh.rotation.x = Math.PI / 2.5 + targetY * 0.3;
+  }
+  if (starField) {
+    starField.rotation.y = -targetX * 0.5;
+    starField.rotation.x = targetY * 0.5;
+  }
+  if (gridHelper) {
+    gridHelper.position.z = (gridHelper.position.z + 0.08) % 3.2;
+  }
+  if (camera) {
+    camera.position.x = targetX * 7;
+    camera.position.y = -targetY * 7;
+    camera.lookAt(scene.position);
+  }
+  renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+  if (!camera || !renderer) return;
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+window.addEventListener('DOMContentLoaded', init3D);
+
+/* ── AUDIO ── */
+const bgMusic = document.getElementById('bgMusic');
+const musicBtn = document.getElementById('musicBtn');
+let isAudioPlaying = false;
+let currentVol = 0.8;
+bgMusic.volume = currentVol;
+
+function updateVolLabel() {
+  document.getElementById('volLabel').textContent = Math.round(currentVol * 100) + '%';
+}
+
+function changeVol(delta, e) {
+  if (e) e.stopPropagation();
+  currentVol = Math.max(0, Math.min(1, currentVol + delta));
+  bgMusic.volume = currentVol;
+  updateVolLabel();
+}
+
+function playMusic() {
+  if (!bgMusic) return;
+  if (ac && ac.state === 'suspended') ac.resume();
+  bgMusic.play().then(() => {
+    isAudioPlaying = true;
+    musicBtn.classList.add('playing');
+    musicBtn.innerHTML = '⏸ Tạm dừng';
+  }).catch(err => {
+    console.warn('Music play failed:', err);
+  });
+}
+
+function pauseMusic() {
+  bgMusic.pause();
+  isAudioPlaying = false;
+  musicBtn.classList.remove('playing');
+  musicBtn.innerHTML = '▶ Nhạc nền';
+}
+
+function toggleAudio(e) {
+  if (e) e.stopPropagation();
+  if (isAudioPlaying) pauseMusic();
+  else playMusic();
+}
+
+/* ── VIDEO + MUSIC SYNC ── */
+const introVideo = document.getElementById('introVideo');
+const endingVideo = document.getElementById('endingVideo');
+let wasMusicPlayingBeforeVideo = false;
+
+function updateBigPlay(vid, bigPlayId) {
+  const bp = document.getElementById(bigPlayId);
+  if (!bp) return;
+  if (vid.paused) bp.classList.remove('hidden');
+  else bp.classList.add('hidden');
+}
+
+function setupVideo(vid, bigPlayId) {
+  if (!vid) return;
+  vid.addEventListener('play', () => {
+    wasMusicPlayingBeforeVideo = isAudioPlaying;
+    if (isAudioPlaying) pauseMusic();
+    updateBigPlay(vid, bigPlayId);
+  });
+  vid.addEventListener('ended', () => {
+    updateBigPlay(vid, bigPlayId);
+    if (wasMusicPlayingBeforeVideo) playMusic();
+  });
+  vid.addEventListener('pause', () => {
+    updateBigPlay(vid, bigPlayId);
+  });
+  updateBigPlay(vid, bigPlayId);
+}
+
+setupVideo(introVideo, 'introBigPlay');
+setupVideo(endingVideo, 'endingBigPlay');
+
+function playVideo(id, e) {
+  if (e) e.stopPropagation();
+  const v = document.getElementById(id);
+  if (!v) return;
+  if (v.paused) {
+    [introVideo, endingVideo].forEach(other => {
+      if (other && other !== v && !other.paused) {
+        other.pause();
+      }
+    });
+    v.play().catch(err => console.warn('Video play failed:', err));
+  } else {
+    v.pause();
+  }
+}
+
+function restartVideo(id, e) {
+  if (e) e.stopPropagation();
+  const v = document.getElementById(id);
+  if (!v) return;
+  v.currentTime = 0;
+  v.play().catch(err => console.warn('Video play failed:', err));
+}
+
+/* ── UI CLICK SOUND ── */
+let ac = null, snd = true;
+function initAC() { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); }
+
+function playClickSound() {
+  if (!snd) return;
+  initAC();
+  if (ac.state === 'suspended') ac.resume();
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(520, ac.currentTime);
+  o.frequency.exponentialRampToValueAtTime(880, ac.currentTime + .08);
+  g.gain.setValueAtTime(.0001, ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(.02, ac.currentTime + .01);
+  g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + .12);
+  o.connect(g); g.connect(ac.destination);
+  o.start(); o.stop(ac.currentTime + .14);
+}
+
+function toggleSound(e) {
+  if (e) e.stopPropagation();
+  snd = !snd;
+  document.getElementById('sndBtn').textContent = snd ? '🔊' : '🔇';
+}
+
+/* ── SLIDE ENGINE ── */
+const slides = document.querySelectorAll('.slide');
+const countEl = document.getElementById('count');
+const prog = document.getElementById('prog');
+let cur = 0;
+const total = slides.length;
+
+function stopAllVideos() {
+  [introVideo, endingVideo].forEach(v => {
+    if (v && !v.paused) {
+      v.pause();
+      v.currentTime = 0;
+    }
+  });
+}
+
+function show(n) {
+  if (n < 0) n = total - 1;
+  if (n >= total) n = 0;
+
+  const prevSlide = slides[cur];
+  if (prevSlide && prevSlide.dataset.video) {
+    stopAllVideos();
+    if (wasMusicPlayingBeforeVideo && !isAudioPlaying) {
+      playMusic();
+    }
+  }
+
+  slides.forEach((s, idx) => {
+    s.classList.remove('active', 'exit-prev');
+    if (idx < n) s.classList.add('exit-prev');
+  });
+
+  cur = n;
+  slides[cur].classList.add('active');
+  countEl.textContent = `${cur + 1} / ${total}`;
+  prog.style.width = `${((cur + 1) / total) * 100}%`;
+
+  if (slides[cur].dataset.video === 'intro') {
+    if (introVideo) {
+      introVideo.pause();
+      introVideo.currentTime = 0;
+      updateBigPlay(introVideo, 'introBigPlay');
+    }
+  } else if (slides[cur].dataset.video === 'ending') {
+    if (endingVideo) {
+      endingVideo.pause();
+      endingVideo.currentTime = 0;
+      updateBigPlay(endingVideo, 'endingBigPlay');
+    }
+  } else {
+    playClickSound();
+  }
+}
+
+function go(d, e) {
+  if (e) e.stopPropagation();
+  show(cur + d);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); go(1); }
+  if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+  if (e.key.toLowerCase() === 'f') toggleFS();
+  if (e.key.toLowerCase() === 'm') toggleSound();
+});
+
+document.addEventListener('click', e => {
+  if (e.target.closest('.controls') || e.target.closest('.tools') || 
+      e.target.closest('.member-card') || e.target.closest('.card') ||
+      e.target.closest('.lab-controls') || e.target.closest('.video-overlay') ||
+      e.target.closest('video') || e.target.closest('.lab-btn') ||
+      e.target.closest('input')) return;
+  go(e.clientX > window.innerWidth / 2 ? 1 : -1);
+});
+
+function toggleFS(e) {
+  if (e) e.stopPropagation();
+  document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+}
+
+/* ── ONLINE LAB SIMULATION ── */
+const labCanvas = document.getElementById('labCanvas');
+const labCtx = labCanvas ? labCanvas.getContext('2d') : null;
+let labAnimId = null;
+let ballX = 0, ballRunning = false, ballSpeed = 0;
+let gateE = 0.35, gateF = 0.70;
+let measuredDt = 0, startTime = 0, passedE = false, passedF = false;
+
+function resizeLab() {
+  if (!labCanvas) return;
+  const rect = labCanvas.parentElement.getBoundingClientRect();
+  labCanvas.width = rect.width * window.devicePixelRatio;
+  labCanvas.height = rect.height * window.devicePixelRatio;
+  labCtx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+  drawLab();
+}
+
+function drawLab() {
+  if (!labCtx || !labCanvas) return;
+  const w = labCanvas.width / window.devicePixelRatio;
+  const h = labCanvas.height / window.devicePixelRatio;
+  labCtx.clearRect(0, 0, w, h);
+
+  const grad = labCtx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, '#0a1628');
+  grad.addColorStop(1, '#0f172a');
+  labCtx.fillStyle = grad;
+  labCtx.fillRect(0, 0, w, h);
+
+  labCtx.strokeStyle = 'rgba(0,240,255,0.06)';
+  labCtx.lineWidth = 1;
+  for (let i = 0; i < w; i += 40) {
+    labCtx.beginPath(); labCtx.moveTo(i, 0); labCtx.lineTo(i, h); labCtx.stroke();
+  }
+  for (let i = 0; i < h; i += 40) {
+    labCtx.beginPath(); labCtx.moveTo(0, i); labCtx.lineTo(w, i); labCtx.stroke();
+  }
+
+  const railY = h * 0.55;
+  const margin = 40;
+  const railLen = w - margin * 2;
+
+  labCtx.strokeStyle = 'rgba(255,255,255,0.25)';
+  labCtx.lineWidth = 4;
+  labCtx.lineCap = 'round';
+  labCtx.beginPath();
+  labCtx.moveTo(margin, railY);
+  labCtx.lineTo(margin + railLen, railY);
+  labCtx.stroke();
+
+  labCtx.strokeStyle = 'rgba(0,240,255,0.15)';
+  labCtx.lineWidth = 12;
+  labCtx.beginPath();
+  labCtx.moveTo(margin, railY);
+  labCtx.lineTo(margin + railLen, railY);
+  labCtx.stroke();
+
+  const eX = margin + railLen * gateE;
+  const fX = margin + railLen * gateF;
+
+  function drawGate(x, label) {
+    labCtx.fillStyle = 'rgba(0,240,255,0.9)';
+    labCtx.shadowColor = '#00f0ff';
+    labCtx.shadowBlur = 18;
+    labCtx.fillRect(x - 2, railY - 55, 4, 70);
+    labCtx.shadowBlur = 0;
+    labCtx.fillStyle = '#00f0ff';
+    labCtx.font = 'bold 14px Space Grotesk, sans-serif';
+    labCtx.textAlign = 'center';
+    labCtx.fillText(label, x, railY - 65);
+  }
+  drawGate(eX, 'E');
+  drawGate(fX, 'F');
+
+  const bx = margin + ballX * railLen;
+  const by = railY - 14;
+  const r = 14;
+
+  labCtx.beginPath();
+  labCtx.arc(bx, by, r + 8, 0, Math.PI * 2);
+  labCtx.fillStyle = 'rgba(0,240,255,0.2)';
+  labCtx.fill();
+
+  const ballGrad = labCtx.createRadialGradient(bx - 4, by - 4, 2, bx, by, r);
+  ballGrad.addColorStop(0, '#ffffff');
+  ballGrad.addColorStop(0.5, '#00f0ff');
+  ballGrad.addColorStop(1, '#0284c7');
+  labCtx.beginPath();
+  labCtx.arc(bx, by, r, 0, Math.PI * 2);
+  labCtx.fillStyle = ballGrad;
+  labCtx.shadowColor = '#00f0ff';
+  labCtx.shadowBlur = 20;
+  labCtx.fill();
+  labCtx.shadowBlur = 0;
+
+  labCtx.fillStyle = 'rgba(255,255,255,0.5)';
+  labCtx.font = '12px Plus Jakarta Sans, sans-serif';
+  labCtx.textAlign = 'center';
+  const sVal = parseFloat(document.getElementById('sSlider')?.value || 0.5);
+  labCtx.fillText(`s = ${sVal.toFixed(2)} m`, (eX + fX) / 2, railY + 30);
+}
+
+function startLab() {
+  if (ballRunning) return;
+  const s = parseFloat(document.getElementById('sSlider').value);
+  const v = parseFloat(document.getElementById('vSlider').value);
+  ballSpeed = v / s;
+  ballX = 0.05;
+  ballRunning = true;
+  passedE = false;
+  passedF = false;
+  measuredDt = 0;
+  document.getElementById('dtResult').textContent = '—';
+  document.getElementById('vtbResult').textContent = '—';
+  document.getElementById('labFinal').textContent = 'Đang chạy...';
+  document.getElementById('labFinal').style.color = 'var(--cyan)';
+
+  const start = performance.now();
+  let tE = 0, tF = 0;
+
+  function animate(now) {
+    if (!ballRunning) return;
+    const dt = (now - (animate.last || now)) / 1000;
+    animate.last = now;
+    ballX += ballSpeed * dt;
+
+    if (!passedE && ballX >= gateE) {
+      passedE = true;
+      tE = now;
+    }
+    if (!passedF && ballX >= gateF) {
+      passedF = true;
+      tF = now;
+      measuredDt = (tF - tE) / 1000;
+      const vtb = s / measuredDt;
+      document.getElementById('dtResult').textContent = measuredDt.toFixed(3) + ' s';
+      document.getElementById('vtbResult').textContent = vtb.toFixed(3) + ' m/s';
+      document.getElementById('labFinal').textContent = `v_tb ≈ ${vtb.toFixed(3)} m/s`;
+      document.getElementById('labFinal').style.color = 'var(--green)';
+    }
+
+    if (ballX > 0.95) {
+      ballRunning = false;
+      ballX = 0.95;
+    }
+
+    drawLab();
+    if (ballRunning) labAnimId = requestAnimationFrame(animate);
+  }
+  animate.last = null;
+  labAnimId = requestAnimationFrame(animate);
+}
+
+function resetLab() {
+  ballRunning = false;
+  if (labAnimId) cancelAnimationFrame(labAnimId);
+  ballX = 0.05;
+  document.getElementById('dtResult').textContent = '—';
+  document.getElementById('vtbResult').textContent = '—';
+  document.getElementById('labFinal').textContent = 'Nhấn "Thả bi" để bắt đầu';
+  document.getElementById('labFinal').style.color = 'var(--green)';
+  drawLab();
+}
+
+['sSlider', 'vSlider', 'dSlider'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input', () => {
+    const s = parseFloat(document.getElementById('sSlider').value);
+    const v = parseFloat(document.getElementById('vSlider').value);
+    const d = parseFloat(document.getElementById('dSlider').value);
+    document.getElementById('sVal').textContent = s.toFixed(2) + ' m';
+    document.getElementById('vVal').textContent = v.toFixed(2) + ' m/s';
+    document.getElementById('dVal').textContent = d.toFixed(3) + ' m';
+    drawLab();
+  });
+});
+
+window.addEventListener('resize', resizeLab);
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(resizeLab, 100);
+  updateVolLabel();
+  show(0);
+});
+</script>
+</body>
+</html>
